@@ -3,6 +3,9 @@
 #include "resource.h"
 
 #define APP_CLASS			L"ToggleSwitchSmaple"
+#define ID_BIG              1001
+#define ID_NORMAL           1002
+#define ID_SMALL            1003
 
 LRESULT CALLBACK SampleDlgProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp);
 LRESULT OnInitDlg(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp);
@@ -19,8 +22,10 @@ int APIENTRY _tWinMain(HINSTANCE hCurInst, HINSTANCE hPrevInst, LPTSTR lpsCmdLin
 
 	Gdiplus::GdiplusStartupInput gdiplusStartupInput = nullptr;
 	ULONG_PTR gdiplusToken = 0;
+	// GDI+初期化
 	if (Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr) == Gdiplus::Ok) {
 
+		// ダイアログ作成
 		DialogBox(hCurInst, MAKEINTRESOURCE(IDD_SAMPLEBOX), nullptr, (DLGPROC)SampleDlgProc);
 
 		Gdiplus::GdiplusShutdown(gdiplusToken);
@@ -52,21 +57,26 @@ LRESULT CALLBACK SampleDlgProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp)
 LRESULT OnInitDlg(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp)
 {
 	HINSTANCE hInst = reinterpret_cast<HINSTANCE>(GetWindowLongPtr(hDlg, GWLP_HINSTANCE));
+	// ウィンドウクラス登録
 	if (CToggleSwitch::RegisterWndClass(hInst)) {
 
+		// スイッチ作成（大）
 		HWND hSwitchBig = CToggleSwitch::Create(hDlg,
 			ID_BIG,
 			100, 10,
 			400, 220);
 
+		// スイッチ作成（中）
 		HWND hSwitchNormal = CToggleSwitch::Create(hDlg,
 			ID_NORMAL,
 			100, 250,
 			100, 60);
+		// スイッチの色を設定
 		CToggleSwitch::SetBgColor(hSwitchNormal, RGB(96, 96, 96));
 		CToggleSwitch::SetKnobColor(hSwitchNormal, RGB(220, 20, 20));
 		CToggleSwitch::SetPlateColor(hSwitchNormal, RGB(20, 220, 20));
 
+		// スイッチ作成（小）
 		HWND hSwitchSmall = CToggleSwitch::Create(hDlg,
 			ID_SMALL,
 			100, 330,
