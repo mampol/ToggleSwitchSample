@@ -136,6 +136,8 @@ LRESULT OnDpiChanged(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp)
 		prcNewWindow->bottom - prcNewWindow->top,
 		SWP_NOZORDER | SWP_NOACTIVATE);
 
+	LayoutControls(hDlg);
+
 		return 0;
 }
 
