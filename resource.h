@@ -3,8 +3,6 @@
 // ToggleSwitchSmaple.rc ‚ÅŽg—p
 //
 #define IDD_SAMPLEBOX                   101
-#define ID_BIG                          40002
-#define ID_NORMAL                       40003
 
 // Next default values for new objects
 // 

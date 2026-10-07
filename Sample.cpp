@@ -10,9 +10,15 @@
 LRESULT CALLBACK SampleDlgProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp);
 LRESULT OnInitDlg(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp);
 LRESULT OnCommand(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp);
+LRESULT OnDpiChanged(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp);
+
+static int DpiScale(HWND hWnd, int value);
+void LayoutControls(HWND hDlg);
 
 int APIENTRY _tWinMain(HINSTANCE hCurInst, HINSTANCE hPrevInst, LPTSTR lpsCmdLine, int nCmdShow)
 {
+	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
 	HANDLE hMutex = CreateMutex(NULL, TRUE, APP_CLASS);
 	if (GetLastError() == ERROR_ALREADY_EXISTS) {
 		SetForegroundWindow(FindWindow(APP_CLASS, NULL));
@@ -48,6 +54,8 @@ LRESULT CALLBACK SampleDlgProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp)
 	case WM_CLOSE:
 		EndDialog(hDlg, 0);
 		break;
+	case WM_DPICHANGED:
+		return (OnDpiChanged(hDlg, msg, wp, lp));
 	default:
 		return FALSE;
 	}
@@ -63,14 +71,18 @@ LRESULT OnInitDlg(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp)
 		// スイッチ作成（大）
 		HWND hSwitchBig = CToggleSwitch::Create(hDlg,
 			ID_BIG,
-			100, 10,
-			400, 220);
+			DpiScale(hDlg, 100),
+			DpiScale(hDlg, 10),
+			DpiScale(hDlg, 400),
+			DpiScale(hDlg, 220));
 
 		// スイッチ作成（中）
 		HWND hSwitchNormal = CToggleSwitch::Create(hDlg,
 			ID_NORMAL,
-			100, 250,
-			100, 60);
+			DpiScale(hDlg, 100),
+			DpiScale(hDlg, 250),
+			DpiScale(hDlg, 100),
+			DpiScale(hDlg, 60));
 		// スイッチの色を設定
 		CToggleSwitch::SetBgColor(hSwitchNormal, RGB(96, 96, 96));
 		CToggleSwitch::SetKnobColor(hSwitchNormal, RGB(220, 20, 20));
@@ -79,8 +91,10 @@ LRESULT OnInitDlg(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp)
 		// スイッチ作成（小）
 		HWND hSwitchSmall = CToggleSwitch::Create(hDlg,
 			ID_SMALL,
-			100, 330,
-			50, 30,
+			DpiScale(hDlg, 100),
+			DpiScale(hDlg, 330),
+			DpiScale(hDlg, 50),
+			DpiScale(hDlg, 30),
 			RGB(20, 220, 20),
 			true);
 	}
@@ -108,4 +122,49 @@ LRESULT OnCommand(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp)
 		break;
 	}
 	return TRUE;
+}
+
+LRESULT OnDpiChanged(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp)
+{
+	RECT* prcNewWindow = reinterpret_cast<RECT*>(lp);
+
+	SetWindowPos(hDlg,
+		nullptr,
+		prcNewWindow->left,
+		prcNewWindow->top,
+		prcNewWindow->right - prcNewWindow->left,
+		prcNewWindow->bottom - prcNewWindow->top,
+		SWP_NOZORDER | SWP_NOACTIVATE);
+
+		return 0;
+}
+
+int DpiScale(HWND hWnd, int value)
+{
+	UINT dpi = GetDpiForWindow(hWnd);
+	return MulDiv(value, dpi, 96);
+}
+
+void LayoutControls(HWND hDlg)
+{
+	MoveWindow(GetDlgItem(hDlg, ID_BIG),
+		DpiScale(hDlg, 100),
+		DpiScale(hDlg, 10),
+		DpiScale(hDlg, 400),
+		DpiScale(hDlg, 220),
+		TRUE);
+
+	MoveWindow(GetDlgItem(hDlg, ID_NORMAL),
+		DpiScale(hDlg, 100),
+		DpiScale(hDlg, 250),
+		DpiScale(hDlg, 100),
+		DpiScale(hDlg, 60),
+		TRUE);
+
+	MoveWindow(GetDlgItem(hDlg, ID_SMALL),
+		DpiScale(hDlg, 100),
+		DpiScale(hDlg, 330),
+		DpiScale(hDlg, 50),
+		DpiScale(hDlg, 30),
+		TRUE);
 }
