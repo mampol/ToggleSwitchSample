@@ -14,17 +14,38 @@ namespace CToggleSwitch
             COLORREF colPlate = RGB(70, 160, 230);
         };
 
-        LRESULT OnCreate(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam);
+        LRESULT OnNccreate(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam);
         LRESULT OnPaint(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam);
         LRESULT OnTimer(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam);
         LRESULT OnLButtonUp(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam);
-        LRESULT OnDestroy(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam);
+        LRESULT OnNcdestroy(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam);
+        LRESULT OnBmGetcheck(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam);
+        LRESULT OnBmSetcheck(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam);
+
+        ToggleState* GetState(HWND hSwitch)
+        {
+            return reinterpret_cast<ToggleState*>(
+                GetWindowLongPtr(hSwitch, GWLP_USERDATA));
+        }
+
+        static void SetCheckedInternal(HWND hSwitch, bool checked)
+        {
+            auto* state = GetState(hSwitch);
+            if (!state)
+                return;
+
+            state->checked = checked;
+            state->target = checked ? 1.0f : 0.0f;
+
+            SetTimer(hSwitch, 1, 15, nullptr);
+            InvalidateRect(hSwitch, nullptr, FALSE);
+        }
 
         LRESULT CALLBACK WndProc(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             switch (msg) {
-            case WM_CREATE:
-                return (OnCreate(hSwitch, msg, wParam, lParam));
+            case WM_NCCREATE:
+                return (OnNccreate(hSwitch, msg, wParam, lParam));
             case WM_ERASEBKGND:
                 return 1;
             case WM_TIMER:
@@ -33,15 +54,29 @@ namespace CToggleSwitch
                 return (OnPaint(hSwitch, msg, wParam, lParam));
             case WM_LBUTTONUP:
                 return (OnLButtonUp(hSwitch, msg, wParam, lParam));
-            case WM_DESTROY:
-                return (OnDestroy(hSwitch, msg, wParam, lParam));
+            case WM_NCDESTROY:
+                return (OnNcdestroy(hSwitch, msg, wParam, lParam));
+            case BM_GETCHECK:
+                return (OnBmGetcheck(hSwitch, msg, wParam, lParam));
+            case BM_SETCHECK:
+                return (OnBmSetcheck(hSwitch, msg, wParam, lParam));
             }
             return (DefWindowProc(hSwitch, msg, wParam, lParam));
         }
 
-        LRESULT OnCreate(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam)
+        LRESULT OnNccreate(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam)
         {
-            return 0;
+            ToggleState* state = new ToggleState;
+            if (!state)
+                return FALSE;
+
+            state->checked = false;
+            state->pos = 0.0f;
+            state->target = state->pos;
+            state->colBg = GetSysColor(COLOR_BTNFACE);
+            SetWindowLongPtr(hSwitch, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(state));
+
+            return TRUE;
         }
 
         LRESULT OnTimer(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -144,14 +179,14 @@ namespace CToggleSwitch
                 g.FillEllipse(&shadowBrush,
                     static_cast<Gdiplus::REAL>(knobLeft) + 1.0f,
                     static_cast<Gdiplus::REAL>(margin) + 1.0f,
-                    static_cast<Gdiplus::REAL>(diameter),
-                    static_cast<Gdiplus::REAL>(diameter));
+                    static_cast<Gdiplus::REAL>(diameter - 0.5f),
+                    static_cast<Gdiplus::REAL>(diameter) - 0.5f);
 
                 g.FillEllipse(&knobBrush,
                     static_cast<Gdiplus::REAL>(knobLeft) + 0.5f,
                     static_cast<Gdiplus::REAL>(margin) + 0.5f,
-                    static_cast<Gdiplus::REAL>(diameter - 1),
-                    static_cast<Gdiplus::REAL>(diameter - 1));
+                    static_cast<Gdiplus::REAL>(diameter - 1.5f),
+                    static_cast<Gdiplus::REAL>(diameter - 1.5f));
 
                 if (checked)
                 {
@@ -195,12 +230,41 @@ namespace CToggleSwitch
             return 0;
         }
 
-        LRESULT OnDestroy(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam)
+        LRESULT OnNcdestroy(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             ToggleState* state = reinterpret_cast<ToggleState*>(GetWindowLongPtr(hSwitch, GWLP_USERDATA));
             if (!state) return 0;
 
             delete state;
+            SetWindowLongPtr(hSwitch, GWLP_USERDATA, 0);
+
+            return 0;
+        }
+
+        LRESULT OnBmGetcheck(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam)
+        {
+            ToggleState* state = reinterpret_cast<ToggleState*>(
+                GetWindowLongPtr(hSwitch, GWLP_USERDATA));
+
+            return state && state->checked
+                ? BST_CHECKED
+                : BST_UNCHECKED;
+        }
+
+        LRESULT OnBmSetcheck(HWND hSwitch, UINT msg, WPARAM wParam, LPARAM lParam)
+        {
+            ToggleState* state = reinterpret_cast<ToggleState*>(
+                GetWindowLongPtr(hSwitch, GWLP_USERDATA));
+
+            if (state)
+            {
+                if (wParam == BST_CHECKED) {
+                    Checked(hSwitch);
+                }
+                else {
+                    UnChecked(hSwitch);
+                }
+            }
 
             return 0;
         }
@@ -211,20 +275,20 @@ bool CToggleSwitch::RegisterWndClass(HINSTANCE hInstance)
 {
     WNDCLASSEX wc{};
     wc.cbSize = sizeof(wc);
+    if (GetClassInfoExW(hInstance, TOGGLESWITCH_CLASS_NAME, &wc)) return true;
+
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(nullptr, IDC_HAND);
     wc.hbrBackground = nullptr;
-    wc.lpszClassName = _T("ToggleSwitch");
+    wc.lpszClassName = TOGGLESWITCH_CLASS_NAME;
     return RegisterClassEx(&wc) != 0;
 }
 
 HWND CToggleSwitch::Create(HWND hParent,
     int id,
     int x, int y,
-    int width, int height,
-    COLORREF colBg,
-    bool checked)
+    int width, int height)
 {
     HINSTANCE hInstance = reinterpret_cast<HINSTANCE>(GetWindowLongPtr(hParent, GWLP_HINSTANCE));
 
@@ -239,39 +303,31 @@ HWND CToggleSwitch::Create(HWND hParent,
         hInstance,
         nullptr);
 
-    if (hSwitch) {
-        ToggleState* state = new ToggleState;
-        if (!state)
-        {
-            DestroyWindow(hSwitch);
-            return nullptr;
-        }
-        state->checked = checked;
-        state->pos = checked ? 1.0f : 0.0f;
-        state->target = state->pos;
-        state->colBg = colBg;
-        SetWindowLongPtr(hSwitch, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(state));
-    }
     return hSwitch;
 }
 
 bool CToggleSwitch::IsChecked(HWND hSwitch)
 {
-    ToggleState* state = reinterpret_cast<ToggleState*>(GetWindowLongPtr(hSwitch, GWLP_USERDATA));
-    if (!state) return false;
-    return state->checked;
+    auto* state = GetState(hSwitch);
+    return state ? state->checked : false;
+}
+
+void CToggleSwitch::Checked(HWND hSwitch)
+{
+    SetCheckedInternal(hSwitch, true);
+}
+
+void CToggleSwitch::UnChecked(HWND hSwitch)
+{
+    SetCheckedInternal(hSwitch, false);
 }
 
 void CToggleSwitch::Toggle(HWND hSwitch)
 {
-    ToggleState *state = reinterpret_cast<ToggleState*>(GetWindowLongPtr(hSwitch, GWLP_USERDATA));
+    auto* state = GetState(hSwitch);
     if (!state) return;
 
-    state->checked = !state->checked;
-    state->target = state->checked ? 1.0f : 0.0f;
-    SetTimer(hSwitch, 1, 15, nullptr);
-
-    InvalidateRect(hSwitch, nullptr, FALSE);
+    SetCheckedInternal(hSwitch, !state->checked);
 }
 
 void CToggleSwitch::SetBgColor(HWND hSwitch, COLORREF colBg)

@@ -6,6 +6,8 @@
 
 #pragma comment(lib, "gdiplus.lib")
 
+#define TOGGLESWITCH_CLASS_NAME         _T("ToggleSwitch")
+
 namespace CToggleSwitch
 {
     bool RegisterWndClass(HINSTANCE hInstance);
@@ -15,11 +17,12 @@ namespace CToggleSwitch
         int x,
         int y,
         int width,
-        int height,
-        COLORREF colBg = RGB(255, 255, 255),
-        bool checked = false);
+        int height);
 
     bool IsChecked(HWND hSwitch);
+
+    void Checked(HWND hSwitch);
+    void UnChecked(HWND hSwitch);
 
     void Toggle(HWND hSwitch);
 
